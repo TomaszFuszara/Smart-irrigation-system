@@ -36,6 +36,9 @@
 #define SOIL_ADC_WET   1500  // 100% wilgotności (mokro)
 
 #define SOIL_MOISTURE_THRESHOLD 30.0f  // próg podlewania (30%)
+
+volatile uint8_t ButtonPressed = 0;
+uint8_t rxData;
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -69,6 +72,20 @@ int __io_putchar(int ch)
 {
     HAL_UART_Transmit(&huart2, (uint8_t*)&ch, 1, HAL_MAX_DELAY);
     return 1;
+}
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+    if (huart->Instance == USART2)
+    {
+    	printf("Odebrano polecenie uzytkownika\r\n");
+        if (rxData == '1')   // GUI wysyła znak '1'
+        {
+            ButtonPressed = 1;
+        }
+
+        HAL_UART_Receive_IT(&huart2, &rxData, 1);
+    }
 }
 /* USER CODE END 0 */
 
@@ -105,6 +122,7 @@ int main(void)
   MX_ADC_Init();
   /* USER CODE BEGIN 2 */
   HAL_ADC_Start(&hadc);
+  HAL_UART_Receive_IT(&huart2, &rxData, 1);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -113,6 +131,7 @@ int main(void)
   {
 	  // --- Pomiar wilgotności gleby ---
 	  printf("Pomiar w toku\r\n");
+	  printf("ButtonPressed = %d\r\n", ButtonPressed);
 	  HAL_GPIO_WritePin(Sensor_GPIO_Port, Sensor_Pin, GPIO_PIN_SET);//Czujnik zasilony jedynie na czas pomiaru
 	  HAL_Delay(20); //Czas na stabilizacje czujnika
 	  HAL_ADC_PollForConversion(&hadc,1000);
@@ -123,15 +142,16 @@ int main(void)
 	  // --- Logika podlewania ---
 	  // Jeśli wilgotność spadnie poniżej 30%, uruchamiamy pompkę
 	  printf("Pomiar wykonany\r\n");
-	  if (PomiarProc < SOIL_MOISTURE_THRESHOLD)
+	  if (PomiarProc < SOIL_MOISTURE_THRESHOLD || ButtonPressed == 1)
 	  {
-		  printf("Wilgotnosc na poziomie: %.1f%%. Za sucho. Podlewamy. Siur, siur, siur.\r\n", PomiarProc);
+		  printf("Wilgotnosc na poziomie: %.1f%%. Rozpoczecie podlewania.\r\n", PomiarProc);
 		  HAL_GPIO_WritePin(Przekaznik_GPIO_Port, Przekaznik_Pin, GPIO_PIN_RESET);
+		  ButtonPressed = 0;
 	  }else{
 		  printf("Wilgotnosc na poziomie: %.1f%%. Jest podlane.\r\n", PomiarProc);
 		  HAL_GPIO_WritePin(Przekaznik_GPIO_Port, Przekaznik_Pin, GPIO_PIN_SET);
 	  }
-	  HAL_Delay(500);
+	  HAL_Delay(1000);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
