@@ -21,7 +21,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include <stdio.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -33,7 +33,7 @@
 /* USER CODE BEGIN PD */
 // Kalibracja czujnika wilgotności gleby
 #define SOIL_ADC_DRY   3700  // 0% wilgotności (sucho)
-#define SOIL_ADC_WET   1500  // 100% wilgotności (mokro)
+#define SOIL_ADC_WET   2200  // 100% wilgotności (mokro)
 
 #define SOIL_MOISTURE_THRESHOLD 30.0f  // próg podlewania (30%)
 
@@ -131,7 +131,6 @@ int main(void)
   {
 	  // --- Pomiar wilgotności gleby ---
 	  printf("Pomiar w toku\r\n");
-	  printf("ButtonPressed = %d\r\n", ButtonPressed);
 	  HAL_GPIO_WritePin(Sensor_GPIO_Port, Sensor_Pin, GPIO_PIN_SET);//Czujnik zasilony jedynie na czas pomiaru
 	  HAL_Delay(20); //Czas na stabilizacje czujnika
 	  HAL_ADC_PollForConversion(&hadc,1000);
@@ -140,7 +139,7 @@ int main(void)
 	  HAL_GPIO_WritePin(Sensor_GPIO_Port, Sensor_Pin, GPIO_PIN_RESET);//Wyłączanie czujnika po pomiarach, oszczędzość energii
 
 	  // --- Logika podlewania ---
-	  // Jeśli wilgotność spadnie poniżej 30%, uruchamiamy pompkę
+	  // Jeśli wilgotność spadnie poniżej 30%, lub użytkownik wyśle polecenie przez GUI to uruchamiana jest pompka
 	  printf("Pomiar wykonany\r\n");
 	  if (PomiarProc < SOIL_MOISTURE_THRESHOLD || ButtonPressed == 1)
 	  {
