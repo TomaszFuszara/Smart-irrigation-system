@@ -35,7 +35,8 @@
 #define SOIL_ADC_DRY   3700  // 0% wilgotności (sucho)
 #define SOIL_ADC_WET   2200  // 100% wilgotności (mokro)
 
-#define SOIL_MOISTURE_THRESHOLD 30.0f  // próg podlewania (30%)
+#define SOIL_MOISTURE_THRESHOLD 30.0f  // próg rozpoczęcia podlewania (30%)
+#define WATERING_STOP_THRESHOLD 80.0f  // próg zakończenia podlewania (80%)
 
 volatile uint8_t ButtonPressed = 0;
 uint8_t rxData;
@@ -143,9 +144,29 @@ int main(void)
 	  printf("Pomiar wykonany\r\n");
 	  if (PomiarProc < SOIL_MOISTURE_THRESHOLD || ButtonPressed == 1)
 	  {
-		  printf("Wilgotnosc na poziomie: %.1f%%. Rozpoczecie podlewania.\r\n", PomiarProc);
-		  HAL_GPIO_WritePin(Przekaznik_GPIO_Port, Przekaznik_Pin, GPIO_PIN_RESET);
-		  ButtonPressed = 0;
+		  printf("Start podlewania\r\n");
+
+		      HAL_GPIO_WritePin(Przekaznik_GPIO_Port, Przekaznik_Pin, GPIO_PIN_RESET);
+
+		      do
+		      {
+		          // --- Nowy pomiar wykonywany w trakcie podlewania ---
+		          HAL_GPIO_WritePin(Sensor_GPIO_Port, Sensor_Pin, GPIO_PIN_SET);
+		          HAL_Delay(20);
+
+		          HAL_ADC_PollForConversion(&hadc,1000);
+		          Pomiar = HAL_ADC_GetValue(&hadc);
+		          PomiarProc = (float)(SOIL_ADC_DRY - Pomiar) * 100.0f / (SOIL_ADC_DRY - SOIL_ADC_WET);
+
+		          HAL_GPIO_WritePin(Sensor_GPIO_Port, Sensor_Pin, GPIO_PIN_RESET);
+		          printf("Podlewanie.Wilgotnosc na poziomie: %.1f%%\r\n", PomiarProc);
+		          HAL_Delay(500);
+
+		      } while (PomiarProc < WATERING_STOP_THRESHOLD);
+
+		      HAL_GPIO_WritePin(Przekaznik_GPIO_Port, Przekaznik_Pin, GPIO_PIN_SET);
+		      ButtonPressed = 0;
+
 	  }else{
 		  printf("Wilgotnosc na poziomie: %.1f%%. Jest podlane.\r\n", PomiarProc);
 		  HAL_GPIO_WritePin(Przekaznik_GPIO_Port, Przekaznik_Pin, GPIO_PIN_SET);
